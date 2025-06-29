@@ -11,6 +11,7 @@ type RegisterRequest struct {
 	LastName          string `json:"last_name" validate:"required"`
 	LicenseNumber     string `json:"license_number" validate:"required"`
 	LicenseExpiryDate string `json:"license_expiry_date" validate:"required"`
+	VehicleBrand      string `json:"vehicle_brand" validate:"required"`
 	VehicleModel      string `json:"vehicle_model" validate:"required"`
 	VehicleNumber     string `json:"vehicle_number" validate:"required"`
 	VehicleYear       int    `json:"vehicle_year" validate:"required"`
@@ -43,6 +44,7 @@ type DriverInfo struct {
 	LastName          string  `json:"last_name" db:"last_name"`
 	LicenseNumber     string  `json:"license_number" db:"license_number"`
 	LicenseExpiryDate string  `json:"license_expiry_date" db:"license_expiry_date"`
+	VehicleBrand      string  `json:"vehicle_brand" db:"vehicle_brand"`
 	VehicleModel      string  `json:"vehicle_model" db:"vehicle_model"`
 	VehicleNumber     string  `json:"vehicle_number" db:"vehicle_number"`
 	VehicleYear       int     `json:"vehicle_year" db:"vehicle_year"`
@@ -60,6 +62,7 @@ type Driver struct {
 	LastName          string    `json:"last_name" db:"last_name"`
 	LicenseNumber     string    `json:"license_number" db:"license_number"`
 	LicenseExpiryDate time.Time `json:"license_expiry_date" db:"license_expiry_date"`
+	VehicleBrand      string    `json:"vehicle_brand" db:"vehicle_brand"`
 	VehicleModel      string    `json:"vehicle_model" db:"vehicle_model"`
 	VehicleNumber     string    `json:"vehicle_number" db:"vehicle_number"`
 	VehicleYear       int       `json:"vehicle_year" db:"vehicle_year"`

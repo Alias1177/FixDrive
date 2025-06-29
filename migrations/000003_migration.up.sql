@@ -9,6 +9,7 @@ CREATE TABLE drivers (
                          last_name VARCHAR(100),
                          license_number VARCHAR(50) UNIQUE NOT NULL,
                          license_expiry_date DATE NOT NULL,
+                         vehicle_brand VARCHAR(100),
                          vehicle_model VARCHAR(100),
                          vehicle_number VARCHAR(20) UNIQUE NOT NULL,
                          vehicle_year INTEGER,

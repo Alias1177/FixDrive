@@ -90,13 +90,13 @@ func (s *service) Register(ctx context.Context, req driver.RegisterRequest) (dri
 	// Создаем водителя
 	var driverID int64
 	query := `INSERT INTO drivers (email, password_hash, phone_number, first_name, last_name, 
-			  license_number, license_expiry_date, vehicle_model, vehicle_number, vehicle_year, 
+			  license_number, license_expiry_date, vehicle_brand, vehicle_model, vehicle_number, vehicle_year, 
 			  status, rating, created_at, updated_at)
-			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending', 0.0, NOW(), NOW()) 
+			  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', 0.0, NOW(), NOW()) 
 			  RETURNING id`
 
 	err = s.db.QueryRowContext(ctx, query, req.Email, string(hash), req.PhoneNumber,
-		req.FirstName, req.LastName, req.LicenseNumber, licenseExpiry, req.VehicleModel,
+		req.FirstName, req.LastName, req.LicenseNumber, licenseExpiry, req.VehicleBrand, req.VehicleModel,
 		req.VehicleNumber, req.VehicleYear).Scan(&driverID)
 	if err != nil {
 		return driver.TokenResponse{}, err
@@ -111,6 +111,7 @@ func (s *service) Register(ctx context.Context, req driver.RegisterRequest) (dri
 		LastName:          req.LastName,
 		LicenseNumber:     req.LicenseNumber,
 		LicenseExpiryDate: req.LicenseExpiryDate,
+		VehicleBrand:      req.VehicleBrand,
 		VehicleModel:      req.VehicleModel,
 		VehicleNumber:     req.VehicleNumber,
 		VehicleYear:       req.VehicleYear,
@@ -126,7 +127,7 @@ func (s *service) Login(ctx context.Context, req driver.LoginRequest) (driver.To
 	var driverRecord driver.Driver
 	err := s.db.GetContext(ctx, &driverRecord,
 		`SELECT id, email, password_hash, phone_number, first_name, last_name, 
-		 license_number, license_expiry_date, vehicle_model, vehicle_number, vehicle_year, 
+		 license_number, license_expiry_date, vehicle_brand, vehicle_model, vehicle_number, vehicle_year, 
 		 status, rating FROM drivers WHERE email = $1`, req.Email)
 	if err != nil {
 		return driver.TokenResponse{}, ErrDriverNotFound
@@ -145,6 +146,7 @@ func (s *service) Login(ctx context.Context, req driver.LoginRequest) (driver.To
 		LastName:          driverRecord.LastName,
 		LicenseNumber:     driverRecord.LicenseNumber,
 		LicenseExpiryDate: driverRecord.LicenseExpiryDate.Format("2006-01-02"),
+		VehicleBrand:      driverRecord.VehicleBrand,
 		VehicleModel:      driverRecord.VehicleModel,
 		VehicleNumber:     driverRecord.VehicleNumber,
 		VehicleYear:       driverRecord.VehicleYear,
@@ -183,7 +185,7 @@ func (s *service) RefreshToken(ctx context.Context, req driver.RefreshTokenReque
 	var driverRecord driver.Driver
 	err = s.db.GetContext(ctx, &driverRecord,
 		`SELECT id, email, phone_number, first_name, last_name, license_number, 
-		 license_expiry_date, vehicle_model, vehicle_number, vehicle_year, status, rating 
+		 license_expiry_date, vehicle_brand, vehicle_model, vehicle_number, vehicle_year, status, rating 
 		 FROM drivers WHERE id = $1`, refreshToken.DriverID)
 	if err != nil {
 		return driver.TokenResponse{}, ErrDriverNotFound
@@ -197,6 +199,7 @@ func (s *service) RefreshToken(ctx context.Context, req driver.RefreshTokenReque
 		LastName:          driverRecord.LastName,
 		LicenseNumber:     driverRecord.LicenseNumber,
 		LicenseExpiryDate: driverRecord.LicenseExpiryDate.Format("2006-01-02"),
+		VehicleBrand:      driverRecord.VehicleBrand,
 		VehicleModel:      driverRecord.VehicleModel,
 		VehicleNumber:     driverRecord.VehicleNumber,
 		VehicleYear:       driverRecord.VehicleYear,
@@ -245,7 +248,7 @@ func (s *service) ValidateToken(ctx context.Context, tokenString string) (driver
 	var driverRecord driver.Driver
 	err = s.db.GetContext(ctx, &driverRecord,
 		`SELECT id, email, phone_number, first_name, last_name, license_number, 
-		 license_expiry_date, vehicle_model, vehicle_number, vehicle_year, status, rating 
+		 license_expiry_date, vehicle_brand, vehicle_model, vehicle_number, vehicle_year, status, rating 
 		 FROM drivers WHERE id = $1`, driverID)
 	if err != nil {
 		return driver.DriverInfo{}, ErrDriverNotFound
@@ -259,6 +262,7 @@ func (s *service) ValidateToken(ctx context.Context, tokenString string) (driver
 		LastName:          driverRecord.LastName,
 		LicenseNumber:     driverRecord.LicenseNumber,
 		LicenseExpiryDate: driverRecord.LicenseExpiryDate.Format("2006-01-02"),
+		VehicleBrand:      driverRecord.VehicleBrand,
 		VehicleModel:      driverRecord.VehicleModel,
 		VehicleNumber:     driverRecord.VehicleNumber,
 		VehicleYear:       driverRecord.VehicleYear,
