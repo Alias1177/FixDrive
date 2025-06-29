@@ -9,6 +9,8 @@ type Config struct {
 	Database DatabaseConfig
 	JWT      JWTConfig
 	Server   ServerConfig
+	Twilio   TwilioConfig
+	Redis    RedisConfig
 }
 
 type DatabaseConfig struct {
@@ -27,6 +29,19 @@ type ServerConfig struct {
 	Port string
 }
 
+type TwilioConfig struct {
+	AccountSID string
+	AuthToken  string
+	FromPhone  string
+}
+
+type RedisConfig struct {
+	Host     string
+	Port     string
+	Password string
+	DB       int
+}
+
 func Load() *Config {
 	return &Config{
 		Database: DatabaseConfig{
@@ -42,12 +57,27 @@ func Load() *Config {
 		Server: ServerConfig{
 			Port: getEnv("PORT", "8080"),
 		},
+		Twilio: TwilioConfig{
+			AccountSID: getEnv("TWILIO_ACCOUNT_SID", ""),
+			AuthToken:  getEnv("TWILIO_AUTH_TOKEN", ""),
+			FromPhone:  getEnv("TWILIO_FROM_PHONE", ""),
+		},
+		Redis: RedisConfig{
+			Host:     getEnv("REDIS_HOST", "localhost"),
+			Port:     getEnv("REDIS_PORT", "6379"),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       0,
+		},
 	}
 }
 
 func (d *DatabaseConfig) DSN() string {
 	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		d.Host, d.Port, d.User, d.Password, d.Name)
+}
+
+func (r *RedisConfig) Addr() string {
+	return fmt.Sprintf("%s:%s", r.Host, r.Port)
 }
 
 func getEnv(key, defaultValue string) string {

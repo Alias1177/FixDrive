@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:15
     container_name: fixdrive_postgres
     environment:
       POSTGRES_DB: db
@@ -18,5 +18,38 @@ services:
       timeout: 10s
       retries: 3
 
+  redis:
+    image: redis:7-alpine
+    container_name: fixdrive_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  app:
+    build: .
+    container_name: fixdrive_app
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - DB_NAME=db
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - JWT_SECRET=${JWT_SECRET:-your-jwt-secret}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_FROM_PHONE=${TWILIO_FROM_PHONE}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  redis_data:
