@@ -59,7 +59,7 @@ func main() {
 	driverHandlers := driverHandler.NewHandler(driverService)
 
 	// Создаем OTP сервис
-	otpService := otp.NewService(rdb, cfg.Twilio.AccountSID, cfg.Twilio.AuthToken)
+	otpService := otp.NewService(rdb, cfg.Twilio.AccountSID, cfg.Twilio.AuthToken, cfg.Twilio.FromPhone)
 	otpHandlers := otpHandler.NewHandler(otpService)
 
 	// Настраиваем роутер

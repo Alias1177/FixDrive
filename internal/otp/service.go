@@ -14,14 +14,16 @@ import (
 )
 
 type Service struct {
-	redis  *redis.Client
-	twilio *twilio.RestClient
+	redis     *redis.Client
+	twilio    *twilio.RestClient
+	fromPhone string
 }
 
-func NewService(redisClient *redis.Client, accountSID, authToken string) *Service {
+func NewService(redisClient *redis.Client, accountSID, authToken, fromPhone string) *Service {
 	return &Service{
-		redis:  redisClient,
-		twilio: twilio.NewRestClientWithParams(twilio.ClientParams{Username: accountSID, Password: authToken}),
+		redis:     redisClient,
+		twilio:    twilio.NewRestClientWithParams(twilio.ClientParams{Username: accountSID, Password: authToken}),
+		fromPhone: fromPhone,
 	}
 }
 
@@ -32,20 +34,29 @@ func (s *Service) SendOTP(ctx context.Context, phone string) error {
 		return fmt.Errorf("ошибка генерации OTP: %w", err)
 	}
 
+	log.Printf("Генерируем OTP код %s для номера %s", code, phone)
+
 	// Сохраняем в Redis с TTL 5 минут
 	key := fmt.Sprintf("otp:%s", phone)
 	err = s.redis.Set(ctx, key, code, 5*time.Minute).Err()
 	if err != nil {
+		log.Printf("Ошибка сохранения в Redis: %v", err)
 		return fmt.Errorf("ошибка сохранения OTP в Redis: %w", err)
 	}
 
-	// Отправляем SMS через Twilio
+	log.Printf("OTP сохранен в Redis с ключом %s", key)
+
+	// Отправляем SMS через Twilio Messages API
 	params := &openapi.CreateMessageParams{}
 	params.SetTo(phone)
+	params.SetFrom(s.fromPhone)
 	params.SetBody(fmt.Sprintf("Ваш код подтверждения: %s", code))
+
+	log.Printf("Отправляем SMS через Twilio с номера %s на номер %s", s.fromPhone, phone)
 
 	_, err = s.twilio.Api.CreateMessage(params)
 	if err != nil {
+		log.Printf("Детальная ошибка Twilio API: %v", err)
 		// Удаляем из Redis если SMS не отправился
 		s.redis.Del(ctx, key)
 		return fmt.Errorf("ошибка отправки SMS: %w", err)
