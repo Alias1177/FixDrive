@@ -1,0 +1,67 @@
+name: Simple CI/CD
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+
+    - name: Test
+      run: go test ./...
+
+    - name: Create .env file
+      run: echo "${{ secrets.ENV_FILE }}" > .env
+
+    - name: Build
+      run: go build -o fixdrive cmd/main.go
+
+    - name: Build Docker image
+      run: docker build -t fixdrive:latest .
+
+    - name: Deploy to server
+      run: |
+        echo "🚀 Deploying to server..."
+        
+        # Настройка SSH
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H 31.97.76.106 >> ~/.ssh/known_hosts
+        
+        # Копирование файлов
+        scp fixdrive root@31.97.76.106:/app/
+        scp .env root@31.97.76.106:/app/
+        scp docker-compose.yaml root@31.97.76.106:/app/
+        scp Dockerfile root@31.97.76.106:/app/
+        scp -r migrations root@31.97.76.106:/app/
+        
+        # Перезапуск на сервере
+        ssh root@31.97.76.106 << 'EOF'
+          cd /app
+          docker-compose down || true
+          docker-compose up -d --build
+          
+          # Ждем запуска БД
+          sleep 10
+          
+          # Применяем миграции
+          source .env
+          docker run --rm -v $(pwd)/migrations:/migrations --network host migrate/migrate:v4.18.1 \
+            -path=/migrations -database="postgres://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME?sslmode=disable" up
+          
+          echo "✅ Migrations applied"
+          echo "✅ Service restarted"
+        EOF
+        
+        echo "✅ Deployed successfully" 
