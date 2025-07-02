@@ -44,7 +44,9 @@ jobs:
         scp .env root@31.97.76.106:/app/
         scp docker-compose.yaml root@31.97.76.106:/app/
         scp Dockerfile root@31.97.76.106:/app/
+        scp go.mod go.sum root@31.97.76.106:/app/
         scp -r migrations root@31.97.76.106:/app/
+        scp -r internal models config cmd repo root@31.97.76.106:/app/
         
         # Перезапуск на сервере
         ssh root@31.97.76.106 << 'EOF'
@@ -53,12 +55,15 @@ jobs:
           docker-compose up -d --build
           
           # Ждем запуска БД
-          sleep 10
+          sleep 20
           
-          # Применяем миграции
+          # Проверяем что БД запустилась
+          docker-compose ps
+          
+          # Применяем миграции (используем docker-compose network)
           source .env
-          docker run --rm -v $(pwd)/migrations:/migrations --network host migrate/migrate:v4.18.1 \
-            -path=/migrations -database="postgres://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME?sslmode=disable" up
+          docker run --rm -v $(pwd)/migrations:/migrations --network app_default migrate/migrate:v4.18.1 \
+            -path=/migrations -database="postgres://$DB_USER:$DB_PASSWORD@postgres:5432/$DB_NAME?sslmode=disable" up
           
           echo "✅ Migrations applied"
           echo "✅ Service restarted"
