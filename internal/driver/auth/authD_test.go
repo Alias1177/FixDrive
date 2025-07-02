@@ -59,9 +59,9 @@ func TestDriverService_Register_Success(t *testing.T) {
 		WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(0))
 
 	// Mock создания водителя - полный SQL запрос
-	mock.ExpectQuery(`INSERT INTO drivers \(email, password_hash, phone_number, first_name, last_name, license_number, license_expiry_date, vehicle_model, vehicle_number, vehicle_year, status, rating, created_at, updated_at\) VALUES \(\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, 'pending', 0\.0, NOW\(\), NOW\(\)\) RETURNING id`).
+	mock.ExpectQuery(`INSERT INTO drivers \(email, password_hash, phone_number, first_name, last_name, license_number, license_expiry_date, vehicle_brand, vehicle_model, vehicle_number, vehicle_year, status, rating, created_at, updated_at\) VALUES \(\$1, \$2, \$3, \$4, \$5, \$6, \$7, \$8, \$9, \$10, \$11, 'pending', 0\.0, NOW\(\), NOW\(\)\) RETURNING id`).
 		WithArgs(req.Email, sqlmock.AnyArg(), req.PhoneNumber, req.FirstName, req.LastName,
-			req.LicenseNumber, sqlmock.AnyArg(), req.VehicleModel, req.VehicleNumber, req.VehicleYear).
+			req.LicenseNumber, sqlmock.AnyArg(), sqlmock.AnyArg(), req.VehicleModel, req.VehicleNumber, req.VehicleYear).
 		WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 
 	// Mock создания refresh token
@@ -154,14 +154,14 @@ func TestDriverService_Login_Success(t *testing.T) {
 	licenseExpiry := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
 
 	// Mock получения водителя
-	mock.ExpectQuery(`SELECT id, email, password_hash, phone_number, first_name, last_name, license_number, license_expiry_date, vehicle_model, vehicle_number, vehicle_year, status, rating FROM drivers WHERE email = \$1`).
+	mock.ExpectQuery(`SELECT id, email, password_hash, phone_number, first_name, last_name, license_number, license_expiry_date, vehicle_brand, vehicle_model, vehicle_number, vehicle_year, status, rating FROM drivers WHERE email = \$1`).
 		WithArgs(req.Email).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "email", "password_hash", "phone_number", "first_name", "last_name",
-			"license_number", "license_expiry_date", "vehicle_model", "vehicle_number",
+			"license_number", "license_expiry_date", "vehicle_brand", "vehicle_model", "vehicle_number",
 			"vehicle_year", "status", "rating",
 		}).AddRow(1, "driver@example.com", string(hash), "+1234567890", "Mike", "Driver",
-			"DL123456789", licenseExpiry, "Toyota Camry", "ABC123", 2020, "active", 4.5))
+			"DL123456789", licenseExpiry, "Toyota", "Toyota Camry", "ABC123", 2020, "active", 4.5))
 
 	// Mock создания refresh token
 	mock.ExpectExec(`INSERT INTO driver_refresh_tokens \(driver_id, token, expires_at, created_at, is_revoked\) VALUES \(\$1, \$2, \$3, \$4, false\)`).
@@ -193,7 +193,7 @@ func TestDriverService_Login_DriverNotFound(t *testing.T) {
 	}
 
 	// Mock получения водителя - не найден
-	mock.ExpectQuery(`SELECT id, email, password_hash, phone_number, first_name, last_name, license_number, license_expiry_date, vehicle_model, vehicle_number, vehicle_year, status, rating FROM drivers WHERE email = \$1`).
+	mock.ExpectQuery(`SELECT id, email, password_hash, phone_number, first_name, last_name, license_number, license_expiry_date, vehicle_brand, vehicle_model, vehicle_number, vehicle_year, status, rating FROM drivers WHERE email = \$1`).
 		WithArgs(req.Email).
 		WillReturnError(sql.ErrNoRows)
 
@@ -231,13 +231,13 @@ func TestDriverService_RefreshToken_Success(t *testing.T) {
 	licenseExpiry := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
 
 	// Mock получения водителя
-	mock.ExpectQuery(`SELECT id, email, phone_number, first_name, last_name, license_number, license_expiry_date, vehicle_model, vehicle_number, vehicle_year, status, rating FROM drivers WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT id, email, phone_number, first_name, last_name, license_number, license_expiry_date, vehicle_brand, vehicle_model, vehicle_number, vehicle_year, status, rating FROM drivers WHERE id = \$1`).
 		WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "email", "phone_number", "first_name", "last_name", "license_number",
-			"license_expiry_date", "vehicle_model", "vehicle_number", "vehicle_year", "status", "rating",
+			"license_expiry_date", "vehicle_brand", "vehicle_model", "vehicle_number", "vehicle_year", "status", "rating",
 		}).AddRow(1, "driver@example.com", "+1234567890", "Mike", "Driver", "DL123456789",
-			licenseExpiry, "Toyota Camry", "ABC123", 2020, "active", 4.5))
+			licenseExpiry, "Toyota", "Toyota Camry", "ABC123", 2020, "active", 4.5))
 
 	// Mock создания нового refresh token
 	mock.ExpectExec(`INSERT INTO driver_refresh_tokens \(driver_id, token, expires_at, created_at, is_revoked\) VALUES \(\$1, \$2, \$3, \$4, false\)`).
@@ -267,13 +267,13 @@ func TestDriverService_ValidateToken_Success(t *testing.T) {
 	licenseExpiry := time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC)
 
 	// Mock получения водителя
-	mock.ExpectQuery(`SELECT id, email, phone_number, first_name, last_name, license_number, license_expiry_date, vehicle_model, vehicle_number, vehicle_year, status, rating FROM drivers WHERE id = \$1`).
+	mock.ExpectQuery(`SELECT id, email, phone_number, first_name, last_name, license_number, license_expiry_date, vehicle_brand, vehicle_model, vehicle_number, vehicle_year, status, rating FROM drivers WHERE id = \$1`).
 		WithArgs(int64(1)).
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "email", "phone_number", "first_name", "last_name", "license_number",
-			"license_expiry_date", "vehicle_model", "vehicle_number", "vehicle_year", "status", "rating",
+			"license_expiry_date", "vehicle_brand", "vehicle_model", "vehicle_number", "vehicle_year", "status", "rating",
 		}).AddRow(1, "driver@example.com", "+1234567890", "Mike", "Driver", "DL123456789",
-			licenseExpiry, "Toyota Camry", "ABC123", 2020, "active", 4.5))
+			licenseExpiry, "Toyota", "Toyota Camry", "ABC123", 2020, "active", 4.5))
 
 	driverInfo, err := service.ValidateToken(context.Background(), tokenString)
 
