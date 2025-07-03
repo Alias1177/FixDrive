@@ -206,6 +206,20 @@ func (s *service) LogoutAll(ctx context.Context, userID int64) error {
 	return err
 }
 
+func (s *service) GetAllUsers(ctx context.Context) ([]client.UserInfo, error) {
+	var users []client.UserInfo
+	query := `SELECT id, email, phone_number, first_name, last_name, status 
+			  FROM client 
+			  ORDER BY created_at DESC`
+
+	err := s.db.SelectContext(ctx, &users, query)
+	if err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 func (s *service) generateTokenPair(ctx context.Context, userInfo client.UserInfo) (client.TokenResponse, error) {
 	now := time.Now()
 

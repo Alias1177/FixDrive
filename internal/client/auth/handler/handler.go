@@ -27,6 +27,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Post("/logout", h.Logout)
 	r.Post("/logout-all", h.LogoutAll) // Новый endpoint
 	r.Get("/me", h.GetProfile)
+	r.Get("/list", h.GetAllUsers) // Новый endpoint для списка клиентов
 	return r
 }
 
@@ -148,6 +149,17 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
+}
+
+func (h *Handler) GetAllUsers(w http.ResponseWriter, r *http.Request) {
+	users, err := h.service.GetAllUsers(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
 }
 
 func getToken(r *http.Request) string {

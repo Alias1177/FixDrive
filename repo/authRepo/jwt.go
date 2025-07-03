@@ -12,4 +12,5 @@ type Service interface {
 	ValidateToken(ctx context.Context, token string) (client.UserInfo, error)
 	Logout(ctx context.Context, refreshToken string) error
 	LogoutAll(ctx context.Context, userID int64) error
+	GetAllUsers(ctx context.Context) ([]client.UserInfo, error)
 }

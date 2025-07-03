@@ -12,4 +12,5 @@ type Service interface {
 	ValidateToken(ctx context.Context, token string) (driver.DriverInfo, error)
 	Logout(ctx context.Context, refreshToken string) error
 	LogoutAll(ctx context.Context, driverID int64) error
+	GetAllDrivers(ctx context.Context) ([]driver.DriverInfo, error)
 }

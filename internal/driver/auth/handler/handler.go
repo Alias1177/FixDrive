@@ -27,6 +27,7 @@ func (h *Handler) Routes() chi.Router {
 	r.Post("/logout", h.Logout)
 	r.Post("/logout-all", h.LogoutAll)
 	r.Get("/me", h.GetProfile)
+	r.Get("/list", h.GetAllDrivers)
 	return r
 }
 
@@ -153,6 +154,17 @@ func (h *Handler) GetProfile(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(driverInfo)
+}
+
+func (h *Handler) GetAllDrivers(w http.ResponseWriter, r *http.Request) {
+	drivers, err := h.service.GetAllDrivers(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(drivers)
 }
 
 func getToken(r *http.Request) string {

@@ -49,6 +49,11 @@ func (m *MockDriverService) LogoutAll(ctx context.Context, driverID int64) error
 	return args.Error(0)
 }
 
+func (m *MockDriverService) GetAllDrivers(ctx context.Context) ([]driver.DriverInfo, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]driver.DriverInfo), args.Error(1)
+}
+
 func TestDriverHandler_Register_Success(t *testing.T) {
 	mockService := new(MockDriverService)
 	handler := NewHandler(mockService)

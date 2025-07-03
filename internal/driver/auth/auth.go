@@ -283,6 +283,42 @@ func (s *service) LogoutAll(ctx context.Context, driverID int64) error {
 	return err
 }
 
+func (s *service) GetAllDrivers(ctx context.Context) ([]driver.DriverInfo, error) {
+	var drivers []driver.DriverInfo
+	query := `SELECT id, email, phone_number, first_name, last_name, 
+			  license_number, license_expiry_date, vehicle_brand, vehicle_model, 
+			  vehicle_number, vehicle_year, status, rating 
+			  FROM drivers 
+			  ORDER BY created_at DESC`
+
+	var driverRecords []driver.Driver
+	err := s.db.SelectContext(ctx, &driverRecords, query)
+	if err != nil {
+		return nil, err
+	}
+
+	// Конвертируем Driver в DriverInfo
+	for _, d := range driverRecords {
+		drivers = append(drivers, driver.DriverInfo{
+			ID:                d.ID,
+			Email:             d.Email,
+			PhoneNumber:       d.PhoneNumber,
+			FirstName:         d.FirstName,
+			LastName:          d.LastName,
+			LicenseNumber:     d.LicenseNumber,
+			LicenseExpiryDate: d.LicenseExpiryDate.Format("2006-01-02"),
+			VehicleBrand:      d.VehicleBrand,
+			VehicleModel:      d.VehicleModel,
+			VehicleNumber:     d.VehicleNumber,
+			VehicleYear:       d.VehicleYear,
+			Status:            d.Status,
+			Rating:            d.Rating,
+		})
+	}
+
+	return drivers, nil
+}
+
 func (s *service) generateTokenPair(ctx context.Context, driverInfo driver.DriverInfo) (driver.TokenResponse, error) {
 	now := time.Now()
 

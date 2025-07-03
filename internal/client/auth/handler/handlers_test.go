@@ -49,6 +49,11 @@ func (m *MockClientService) LogoutAll(ctx context.Context, userID int64) error {
 	return args.Error(0)
 }
 
+func (m *MockClientService) GetAllUsers(ctx context.Context) ([]client.UserInfo, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]client.UserInfo), args.Error(1)
+}
+
 func TestHandler_Register_Success(t *testing.T) {
 	mockService := new(MockClientService)
 	handler := NewHandler(mockService)
