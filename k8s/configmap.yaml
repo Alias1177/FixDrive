@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fixdrive-config
+  namespace: fixdrive
+data:
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+  DB_NAME: "db"
+  DB_USER: "user"
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: ""
+  REDIS_DB: "0"
+  PORT: "8080" 

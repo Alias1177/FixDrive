@@ -1,0 +1,28 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fixdrive-ingress
+  namespace: fixdrive
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # Добавь сертификат если нужен HTTPS
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: fixdrive.local  # Замени на свой домен
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: fixdrive-app
+            port:
+              number: 8080
+  # Раскомментируй для HTTPS
+  # tls:
+  # - hosts:
+  #   - fixdrive.local
+  #   secretName: fixdrive-tls 

@@ -1,0 +1,196 @@
+name: CI/CD with Kubernetes
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'docker-compose'
+        type: choice
+        options:
+        - docker-compose
+        - kubernetes
+        - both
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.19
+
+    - name: Test
+      run: go test ./...
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v3
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+    - name: Output image
+      id: image
+      run: echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+  deploy-docker-compose:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.environment == 'docker-compose' || github.event.inputs.environment == 'both' || github.event.inputs.environment == '' }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Create .env file
+      run: echo "${{ secrets.ENV_FILE }}" > .env
+
+    - name: Deploy to server via SSH
+      run: |
+        echo "🚀 Deploying to server via docker-compose..."
+        
+        # Настройка SSH
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -H 31.97.76.106 >> ~/.ssh/known_hosts
+        
+        # Копирование файлов
+        scp -r . root@31.97.76.106:/app/
+        
+        # Перезапуск на сервере
+        ssh root@31.97.76.106 << 'EOF'
+          cd /app
+          docker-compose down || true
+          docker-compose up -d --build
+          
+          # Ждем запуска БД
+          sleep 20
+          
+          # Применяем миграции
+          source .env
+          docker run --rm -v $(pwd)/migrations:/migrations --network app_default migrate/migrate:v4.18.1 \
+            -path=/migrations -database="postgres://$DB_USER:$DB_PASSWORD@postgres:5432/$DB_NAME?sslmode=disable" up
+          
+          echo "✅ Docker-compose deployment completed"
+        EOF
+
+  deploy-kubernetes:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.environment == 'kubernetes' || github.event.inputs.environment == 'both' }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.29.0'
+
+    - name: Configure kubeconfig
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > ~/.kube/config
+        chmod 600 ~/.kube/config
+
+    - name: Update image in Kubernetes manifests
+      run: |
+        sed -i 's|image: fixdrive:latest|image: ${{ needs.build.outputs.image }}|g' k8s/app.yaml
+        sed -i 's|imagePullPolicy: Never|imagePullPolicy: Always|g' k8s/app.yaml
+
+    - name: Create namespace if not exists
+      run: |
+        kubectl create namespace fixdrive --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Apply secrets
+      run: |
+        # Создаем secret с твоими значениями
+        kubectl create secret generic fixdrive-secret \
+          --from-literal=DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+          --from-literal=JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+          --from-literal=TWILIO_ACCOUNT_SID="${{ secrets.TWILIO_ACCOUNT_SID }}" \
+          --from-literal=TWILIO_AUTH_TOKEN="${{ secrets.TWILIO_AUTH_TOKEN }}" \
+          --from-literal=TWILIO_FROM_PHONE="${{ secrets.TWILIO_FROM_PHONE }}" \
+          --namespace=fixdrive \
+          --dry-run=client -o yaml | kubectl apply -f -
+
+    - name: Deploy to Kubernetes
+      run: |
+        echo "🚀 Deploying to Kubernetes..."
+        
+        # Применяем манифесты
+        kubectl apply -f k8s/namespace.yaml
+        kubectl apply -f k8s/configmap.yaml
+        kubectl apply -f k8s/postgres.yaml
+        kubectl apply -f k8s/redis.yaml
+        
+        # Ждем готовности БД
+        kubectl wait --for=condition=available --timeout=300s deployment/postgres -n fixdrive
+        
+        # Применяем миграции
+        kubectl apply -f k8s/migration-job.yaml
+        
+        # Деплоим приложение
+        kubectl apply -f k8s/app.yaml
+        kubectl apply -f k8s/ingress.yaml
+        kubectl apply -f k8s/hpa.yaml
+        
+        echo "✅ Kubernetes deployment completed"
+
+    - name: Verify deployment
+      run: |
+        echo "🔍 Verifying deployment..."
+        kubectl get pods -n fixdrive
+        kubectl get svc -n fixdrive
+        kubectl get ingress -n fixdrive
+        
+        # Проверяем что приложение отвечает
+        kubectl wait --for=condition=ready pod -l app=fixdrive-app -n fixdrive --timeout=300s
+        
+        echo "✅ Deployment verified"
+
+    - name: Rollback on failure
+      if: failure()
+      run: |
+        echo "❌ Deployment failed, rolling back..."
+        kubectl rollout undo deployment/fixdrive-app -n fixdrive || true
+        echo "🔄 Rollback completed" 

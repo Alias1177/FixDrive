@@ -1,0 +1,45 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: fixdrive
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secret.yaml
+  - postgres.yaml
+  - redis.yaml
+  - app.yaml
+  - ingress.yaml
+  - migration-job.yaml
+  - hpa.yaml
+  - network-policy.yaml
+
+# Для разных окружений можно создавать overlays
+commonLabels:
+  app: fixdrive
+  version: v1.0.0
+
+# Префикс для всех ресурсов
+namePrefix: ""
+
+# Суффикс для всех ресурсов
+nameSuffix: ""
+
+# Изменения образов
+images:
+  - name: fixdrive
+    newTag: latest
+
+# Замены для переменных окружения
+replacements:
+  - source:
+      kind: ConfigMap
+      name: fixdrive-config
+      fieldPath: data.DB_HOST
+    targets:
+      - select:
+          kind: Job
+          name: fixdrive-migration
+        fieldPaths:
+          - spec.template.spec.containers.[name=migration].command.[=postgres://user:password@postgres:5432/db?sslmode=disable] 

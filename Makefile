@@ -49,3 +49,37 @@ build: ## Собрать приложение
 .PHONY: run
 run: ## Запустить приложение
 	go run cmd/main.go
+
+# Kubernetes команды
+.PHONY: k8s-deploy
+k8s-deploy: ## Деплой в Kubernetes
+	cd k8s && ./deploy.sh
+
+.PHONY: k8s-logs
+k8s-logs: ## Просмотр логов приложения в Kubernetes
+	kubectl logs -f deployment/fixdrive-app -n fixdrive
+
+.PHONY: k8s-status
+k8s-status: ## Статус подов в Kubernetes
+	kubectl get pods,svc,ingress -n fixdrive
+
+.PHONY: k8s-restart
+k8s-restart: ## Перезапуск приложения в Kubernetes
+	kubectl rollout restart deployment/fixdrive-app -n fixdrive
+
+.PHONY: k8s-delete
+k8s-delete: ## Удалить все ресурсы из Kubernetes
+	kubectl delete namespace fixdrive
+
+.PHONY: docker-build
+docker-build: ## Собрать Docker образ
+	docker build -t fixdrive:latest .
+
+.PHONY: docker-push
+docker-push: ## Загрузить образ в registry
+	docker tag fixdrive:latest $(DOCKER_REGISTRY)/fixdrive:latest
+	docker push $(DOCKER_REGISTRY)/fixdrive:latest
+
+.PHONY: setup-ci
+setup-ci: ## Настроить CI/CD для Kubernetes
+	./scripts/setup-k8s-ci.sh
