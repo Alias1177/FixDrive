@@ -26,3 +26,19 @@ spec:
   # - hosts:
   #   - fixdrive.local
   #   secretName: fixdrive-tls 
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fixdrive-nodeport
+  namespace: fixdrive
+spec:
+  type: NodePort
+  selector:
+    app: fixdrive-app
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080  # Доступен на 31.97.76.106:30080 
