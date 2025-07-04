@@ -75,7 +75,7 @@ jobs:
   deploy-docker-compose:
     needs: build
     runs-on: ubuntu-latest
-    if: ${{ github.event.inputs.environment == 'docker-compose' || github.event.inputs.environment == 'both' }}
+    if: ${{ github.event_name == 'push' || github.event.inputs.environment == 'docker-compose' || github.event.inputs.environment == 'both' }}
     steps:
     - name: Checkout
       uses: actions/checkout@v4
