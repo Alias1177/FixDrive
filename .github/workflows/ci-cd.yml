@@ -1,21 +1,31 @@
-name: Simple CI/CD
+name: Simple CI/CD (Legacy)
 
 on:
-  push:
-    branches: [ main ]
+  # Отключен автозапуск - используется только для manual trigger
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Deploy to production server?'
+        required: true
+        default: 'no'
+        type: choice
+        options:
+        - 'yes'
+        - 'no'
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    if: ${{ github.event.inputs.confirm == 'yes' }}
     
     steps:
     - name: Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v3
 
     - name: Set up Go
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v3
       with:
-        go-version: '1.24'
+        go-version: '1.19'
 
     - name: Test
       run: go test ./...
