@@ -2,6 +2,8 @@ package main
 
 import (
 	"FixDrive/config"
+	"FixDrive/internal/admin"
+	"FixDrive/internal/admin/handler"
 	clientAuth "FixDrive/internal/client/auth"
 	clientHandler "FixDrive/internal/client/auth/handler"
 	driverAuth "FixDrive/internal/driver/auth"
@@ -82,6 +84,11 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
+
+	userRepo := admin.NewUserRepo(db)
+	h := handler.NewHandler(userRepo)
+
+	r.Post("/loginAdmin", h.Login)
 
 	log.Printf("Сервер запущен на порту %s", cfg.Server.Port)
 	log.Println("Client auth: /auth/client/*")
